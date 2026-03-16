@@ -24,6 +24,12 @@ library(here)
 ```
 # Introduction {#sec-intro}
 
+Email spam detection is an important application of statistical modelling because unwanted messages can reduce communication efficiency and increase security risks.  
+For Group 22, the dataset contains several text-related variables that measure the frequency of specific characters or words in an email, together with a binary response variable indicating whether the email is classified as spam.
+
+The aim of this analysis is to investigate which explanatory variables are associated with spam classification, and to prepare an appropriate basis for later generalised linear modelling.  
+Before fitting any formal model, it is necessary to import the dataset, inspect its structure, and carry out basic cleaning checks to ensure that the analysis is reproducible and well documented.
+
 # Exploratory Analysis {#sec-EA}
 ## Data import
 
