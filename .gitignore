@@ -1,0 +1,6 @@
+.Rhistory
+.RData
+.Ruserdata
+.quarto/
+*_files/
+*.log
