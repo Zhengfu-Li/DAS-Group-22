@@ -1,0 +1,92 @@
+---
+title: "Group 22 Analysis"
+author: "Group 22"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# the lines above ensure that the R code in this block (along with any warning messages) will not be shown
+# load any libraries you will use here. E.g.
+library(tidyverse)
+library(skimr)
+library(janitor)
+library(here)
+
+```
+# Introduction {#sec-intro}
+
+# Exploratory Analysis {#sec-EA}
+## Data import
+
+This section begins by importing the original dataset for Group 22 from the project directory.
+```{r}
+# Read the original dataset from the project folder
+spam_raw <- read_csv(here("dataset22.csv"))
+```
+
+
+## Initial inspection
+
+The dataset is then inspected to understand its structure, dimensions, variable names, and the first few observations.
+```{r}
+# Display the first few rows
+head(spam_raw)
+
+# Check the structure of the dataset
+glimpse(spam_raw)
+
+# Check the dimensions of the dataset
+dim(spam_raw)
+
+# Show variable names
+names(spam_raw)
+```
+The initial inspection shows that the dataset contains 920 observations and 7 variables.  
+The response variable `yesno` is initially stored as a character variable, while the remaining variables are numeric.
+
+## Data cleaning
+
+The response variable is converted to the correct type, and basic checks are carried out for missing values and duplicated rows.
+```{r}
+# Create a cleaned copy for further processing
+spam_clean <- spam_raw
+
+# Convert the response variable to a factor
+spam_clean <- spam_clean %>%
+  mutate(yesno = factor(yesno))
+
+# Check missing values in each column
+colSums(is.na(spam_clean))
+
+# Check duplicated rows
+sum(duplicated(spam_clean))
+```
+The cleaning step confirms that there are no missing values in the dataset.  
+The response variable `yesno` is converted to a factor so that it can be used appropriately in later classification modelling.  
+In addition, 210 duplicated rows are detected. These are retained at this stage and noted for later discussion, rather than removed without justification.
+
+## Summary of cleaned data
+
+Finally, a short summary of the cleaned dataset is produced to confirm that it is ready for later modelling.
+```{r}
+# Produce a quick overall summary of the cleaned dataset
+skim(spam_clean)
+
+# Frequency table for the response variable
+tabyl(spam_clean$yesno)
+```
+The summary output confirms that the cleaned dataset is ready for subsequent analysis.  
+The response variable is moderately imbalanced, with 557 non-spam emails (60.5%) and 363 spam emails (39.5%).
+
+# Formal Analysis {#sec-FA}
+
+# Conclusions {#sec-con}
