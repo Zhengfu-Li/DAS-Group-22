@@ -110,7 +110,7 @@ We start with the response variable `yesno`, which tells us whether an email is 
 #| fig-align: center
 #| fig-width: 4.5
 #| fig-height: 3.5
-#| label: fig-barplot1
+#| label: fig-1
 #| fig-cap: Distribution of Spam and Non-Spam Emails.
 
 ggplot(spam_clean, aes(x = yesno, fill = yesno)) +
@@ -124,7 +124,7 @@ ggplot(spam_clean, aes(x = yesno, fill = yesno)) +
   theme(legend.position = "none")
 ```
 
-As shown in @fig-barplot1, there are more non-spam emails than spam emails in the dataset. The difference is there, but it is not very large, so class imbalance does not look like a major issue at this stage.
+As shown in @fig-1, there are more non-spam emails than spam emails in the dataset. The difference is there, but it is not very large, so class imbalance does not seem to be a major issue here.
 
 ## Distribution of Capital Letter Sequences
 
@@ -137,20 +137,25 @@ We then look at `crl.tot`, which measures the total length of uninterrupted capi
 #| fig-align: center
 #| fig-width: 4.5
 #| fig-height: 3.5
-#| label: fig-histplot2
-#| fig-cap: Distribution of Continuous Capital Letter Sequences.
+#| label: fig-2
+#| fig-cap: Distribution of Capital Letter Sequence Length by Email Type.
 
-ggplot(spam_clean, aes(x = crl.tot)) +
-  geom_histogram(bins = 40) +
+ggplot(
+  spam_clean,
+  aes(x = crl.tot, fill = yesno, color = yesno)
+) +
+  geom_density(alpha = 0.4) +
   labs(
-    title = "Distribution of Continuous Capital Letter Sequences",
+    title = "Distribution of Capital Letter Sequence Length by Email Type",
     x = "Capital Letter Sequence Length",
-    y = "Frequency"
+    y = "Density"
   ) +
+  scale_fill_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
   theme_minimal()
 ```
 
-In @fig-histplot2, the distribution is clearly right-skewed. Most emails have fairly small values of `crl.tot`, while only a small number have much larger values. So long capital letter sequences are not common, but they do appear in some emails. This also suggests that a few observations may have a stronger influence than the rest.
+In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam group looks more spread out and has a longer right tail. So larger values of `crl.tot` seem to appear more often in spam emails, even though the two groups still overlap.
 
 ## Dollar Sign Frequency and Spam
 
@@ -163,21 +168,25 @@ This plot compares the frequency of dollar signs in spam and non-spam emails. Th
 #| fig-align: center
 #| fig-width: 4.5
 #| fig-height: 3.5
-#| label: fig-boxplot3
-#| fig-cap: Dollar Sign Frequency by Email Type.
+#| label: fig-3
+#| fig-cap: Distribution of Dollar Sign Frequency by Email Type.
 
-ggplot(spam_clean, aes(x = yesno, y = dollar, fill = yesno)) +
-  geom_boxplot(alpha = 0.7) +
+ggplot(
+  spam_clean,
+  aes(x = dollar, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Dollar Sign Frequency by Email Type",
-    x = "Email Type",
-    y = "Dollar Sign Frequency"
+    title = "Distribution of Dollar Sign Frequency by Email Type",
+    x = "Dollar Sign Frequency",
+    y = "Email Type"
   ) +
-  theme_minimal() +
-  theme(legend.position = "none")
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
 ```
 
-Looking at @fig-boxplot3, spam emails seem to have higher values of `dollar` overall. Many non-spam emails are very close to zero, while the spam group is more spread out and includes some larger values. There is still overlap between the two groups, so the separation is not perfect, but `dollar` looks useful as a predictor.
+Looking at @fig-3, most observations are close to zero in both groups. Even so, the spam emails include more of the larger `dollar` values, so there seems to be some separation.
 
 ## Exclamation Mark Frequency and Spam
 
@@ -190,23 +199,27 @@ We also compare the use of exclamation marks across the two email types. The var
 #| fig-align: center
 #| fig-width: 4.5
 #| fig-height: 3.5
-#| label: fig-boxplot4
-#| fig-cap: Exclamation Mark Frequency by Email Type.
+#| label: fig-4
+#| fig-cap: Distribution of Exclamation Mark Frequency by Email Type.
 
-ggplot(spam_clean, aes(x = yesno, y = bang, fill = yesno)) +
-  geom_boxplot(alpha = 0.7) +
+ggplot(
+  spam_clean,
+  aes(x = bang, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Exclamation Mark Frequency by Email Type",
-    x = "Email Type",
-    y = "Exclamation Mark Frequency"
+    title = "Distribution of Exclamation Mark Frequency by Email Type",
+    x = "Exclamation Mark Frequency",
+    y = "Email Type"
   ) +
-  theme_minimal() +
-  theme(legend.position = "none")
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
 ```
 
-@fig-boxplot4 shows a similar pattern, although the difference looks a little clearer here. Non-spam emails are again concentrated near zero, while spam emails tend to have higher values and a wider spread. Compared with `dollar`, `bang` seems to give slightly clearer separation between the two groups.
+The pattern in @fig-4 is similar, although the separation is still not very sharp. Many non-spam emails stay close to zero, while higher values of `bang` show up more often in spam emails.
 
-## Keyword Frequency: "money"
+## Keyword Frequency: "Money"
 
 This figure looks at the use of the word `money` in spam and non-spam emails. The variable `money` measures how frequently the word appears relative to the total number of characters in an email.
 
@@ -217,21 +230,87 @@ This figure looks at the use of the word `money` in spam and non-spam emails. Th
 #| fig-align: center
 #| fig-width: 4.5
 #| fig-height: 3.5
-#| label: fig-boxplot5
-#| fig-cap: Frequency of the Word "Money" by Email Type.
+#| label: fig-5
+#| fig-cap: Distribution of the Word "Money" by Email Type.
 
-ggplot(spam_clean, aes(x = yesno, y = money, fill = yesno)) +
-  geom_boxplot(alpha = 0.7) +
+ggplot(
+  spam_clean,
+  aes(x = money, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Frequency of the Word 'Money' by Email Type",
-    x = "Email Type",
-    y = "Frequency of 'Money'"
+    title = "Distribution of the Word 'Money' by Email Type",
+    x = "Frequency of 'Money'",
+    y = "Email Type"
   ) +
-  theme_minimal() +
-  theme(legend.position = "none")
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
 ```
 
-@fig-boxplot5 suggests that the word `money` appears more often in spam emails than in non-spam emails. Similar to the previous plots, many non-spam emails have values near zero, while spam emails show a wider spread and more high values. This is consistent with the idea that financially related language is more common in spam.
+For @fig-5, the same general pattern is visible. Most values are still close to zero, but the higher values of `money` appear more often in spam emails.
+
+## Frequency of "000" and Spam
+
+This figure looks at the variable `n000`, which measures the frequency of the string `000` in each email. This may be relevant because spam messages often contain number-based promotions or pricing-related content.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-6
+#| fig-cap: Distribution of "000" by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = n000, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of '000' by Email Type",
+    x = "Frequency of '000'",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+In @fig-6, most observations are again concentrated close to zero. However, the larger values of `n000` are seen more often in the spam group, which suggests that this variable may also help distinguish the two classes.
+
+## Frequency of "Make" and Spam
+
+This figure looks at the variable `make`, which measures how frequently the word `make` appears in each email. It is included here to check whether this word shows a similar pattern to the other predictors.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-7
+#| fig-cap: Distribution of the Word "Make" by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = make, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of the Word 'Make' by Email Type",
+    x = "Frequency of 'Make'",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+Compared with the previous plots, @fig-7 does not show as clear a difference. There is still overlap between the two groups, and the separation here looks weaker overall.
 
 ## Relationships Between Predictors
 
@@ -241,7 +320,7 @@ The next step is to examine the relationships between the explanatory variables.
 #| echo: false
 #| warning: false
 #| message: false
-#| label: fig-corplot6
+#| label: fig-8
 #| fig-cap: Pairwise Relationships Between Explanatory Variables.
 
 GGally::ggpairs(
@@ -249,11 +328,11 @@ GGally::ggpairs(
 )
 ```
 
-From @fig-corplot6, most of the predictors look only weakly related. The clearest relationship seems to be between `dollar` and `n000`, but even that does not look especially strong. Overall, the plot does not suggest a serious multicollinearity problem, so these variables can reasonably be taken forward into the formal model.
+As shown in @fig-8, most of the predictors look only weakly related. The clearest relationship seems to be between `dollar` and `n000`, but even that does not look especially strong. Based on this plot alone, there is no obvious sign of a serious multicollinearity problem, so these variables can still be taken forward into the formal model.
 
 ## Exploratory Analysis Summary
 
-Overall, the exploratory analysis suggests that several text-based features differ between spam and non-spam emails, especially dollar signs, exclamation marks, and financial terms. At the same time, the relationships between predictors seem fairly modest. Taken together, these results give some support for using these variables in the later logistic regression analysis.
+Overall, the exploratory analysis suggests that several text-based features differ between spam and non-spam emails, especially dollar signs, exclamation marks, financial terms, and the frequency of `000`. By contrast, `make` seems to show a weaker pattern. The relationships between predictors also look fairly modest. Taken together, these results support using these variables in the later logistic regression analysis.
 
 # Formal Analysis {#sec-FA}
 
