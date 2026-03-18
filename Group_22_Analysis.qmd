@@ -1,0 +1,494 @@
+---
+title: "Group 22 Analysis"
+author: "Group 22"
+number-sections: true
+format:
+  html:
+    embed-resources: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(skimr)
+library(janitor)
+library(here)
+library(GGally)
+```
+
+# Introduction {#sec-intro}
+
+Email spam detection is an important application of statistical modelling because unwanted messages can reduce communication efficiency and increase security risks.\
+For Group 22, the dataset contains several text-related variables that measure the frequency of specific characters or words in an email, together with a binary response variable indicating whether the email is classified as spam.
+
+The aim of this analysis is to investigate which explanatory variables are associated with spam classification, and to prepare an appropriate basis for later generalised linear modelling.\
+Before fitting any formal model, it is necessary to import the dataset, inspect its structure, and carry out basic cleaning checks to ensure that the analysis is reproducible and well documented.
+
+# Exploratory Analysis {#sec-EA}
+
+## Data import
+
+This section begins by importing the original dataset for Group 22 from the project directory.
+
+```{r}
+# Read the original dataset from the project folder
+spam_raw <- read_csv(here("dataset22.csv"))
+```
+
+## Initial inspection
+
+The dataset is then inspected to understand its structure, dimensions, variable names, and the first few observations.
+
+```{r}
+# Display the first few rows
+head(spam_raw)
+
+# Check the structure of the dataset
+glimpse(spam_raw)
+
+# Check the dimensions of the dataset
+dim(spam_raw)
+
+# Show variable names
+names(spam_raw)
+```
+
+The initial inspection shows that the dataset contains 920 observations and 7 variables.\
+The response variable `yesno` is initially stored as a character variable, while the remaining variables are numeric.
+
+## Data cleaning
+
+The response variable is converted to the correct type, and basic checks are carried out for missing values and duplicated rows.
+
+```{r}
+# Create a cleaned copy for further processing
+spam_clean <- spam_raw
+
+# Convert the response variable to a factor
+spam_clean <- spam_clean %>%
+  mutate(yesno = factor(yesno))
+
+# Check missing values in each column
+colSums(is.na(spam_clean))
+
+# Check duplicated rows
+sum(duplicated(spam_clean))
+```
+
+The cleaning step confirms that there are no missing values in the dataset.\
+The response variable `yesno` is converted to a factor so that it can be used appropriately in later classification modelling.\
+In addition, 210 duplicated rows are detected. These are retained at this stage and noted for later discussion, rather than removed without justification.
+
+## Summary of cleaned data
+
+Finally, a short summary of the cleaned dataset is produced to confirm that it is ready for later modelling.
+
+```{r}
+# Produce a quick overall summary of the cleaned dataset
+skim(spam_clean)
+
+# Frequency table for the response variable
+tabyl(spam_clean$yesno)
+```
+
+The summary output confirms that the cleaned dataset is ready for subsequent analysis.\
+The response variable is moderately imbalanced, with 557 non-spam emails (60.5%) and 363 spam emails (39.5%).
+
+## Dataset Overview
+
+We start with the response variable `yesno`, which tells us whether an email is spam (`y`) or not spam (`n`).
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-1
+#| fig-cap: Distribution of Spam and Non-Spam Emails.
+
+ggplot(spam_clean, aes(x = yesno, fill = yesno)) +
+  geom_bar() +
+  labs(
+    title = "Distribution of Spam and Non-Spam Emails",
+    x = "Email Type",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+As shown in @fig-1, there are more non-spam emails than spam emails in the dataset. The difference is there, but it is not very large, so class imbalance does not seem to be a major issue here.
+
+## Distribution of Capital Letter Sequences
+
+We then look at `crl.tot`, which measures the total length of uninterrupted capital letter sequences in each email.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-2
+#| fig-cap: Distribution of Capital Letter Sequence Length by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = crl.tot, fill = yesno, color = yesno)
+) +
+  geom_density(alpha = 0.4) +
+  labs(
+    title = "Distribution of Capital Letter Sequence Length by Email Type",
+    x = "Capital Letter Sequence Length",
+    y = "Density"
+  ) +
+  scale_fill_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  theme_minimal()
+```
+
+In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam group looks more spread out and has a longer right tail. So larger values of `crl.tot` seem to appear more often in spam emails, even though the two groups still overlap.
+
+## Dollar Sign Frequency and Spam
+
+This plot compares the frequency of dollar signs in spam and non-spam emails. The variable `dollar` measures how often the dollar symbol appears as a percentage of the total number of characters in the email.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-3
+#| fig-cap: Distribution of Dollar Sign Frequency by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = dollar, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of Dollar Sign Frequency by Email Type",
+    x = "Dollar Sign Frequency",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+Looking at @fig-3, most observations are close to zero in both groups. Even so, the spam emails include more of the larger `dollar` values, so there seems to be some separation.
+
+## Exclamation Mark Frequency and Spam
+
+We also compare the use of exclamation marks across the two email types. The variable `bang` gives the percentage of exclamation marks in each email.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-4
+#| fig-cap: Distribution of Exclamation Mark Frequency by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = bang, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of Exclamation Mark Frequency by Email Type",
+    x = "Exclamation Mark Frequency",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+The pattern in @fig-4 is similar, although the separation is still not very sharp. Many non-spam emails stay close to zero, while higher values of `bang` show up more often in spam emails.
+
+## Keyword Frequency: "Money"
+
+This figure looks at the use of the word `money` in spam and non-spam emails. The variable `money` measures how frequently the word appears relative to the total number of characters in an email.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-5
+#| fig-cap: Distribution of the Word "Money" by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = money, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of the Word 'Money' by Email Type",
+    x = "Frequency of 'Money'",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+For @fig-5, the same general pattern is visible. Most values are still close to zero, but the higher values of `money` appear more often in spam emails.
+
+## Frequency of "000" and Spam
+
+This figure looks at the variable `n000`, which measures the frequency of the string `000` in each email. This may be relevant because spam messages often contain number-based promotions or pricing-related content.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-6
+#| fig-cap: Distribution of "000" by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = n000, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of '000' by Email Type",
+    x = "Frequency of '000'",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+In @fig-6, most observations are again concentrated close to zero. However, the larger values of `n000` are seen more often in the spam group, which suggests that this variable may also help distinguish the two classes.
+
+## Frequency of "Make" and Spam
+
+This figure looks at the variable `make`, which measures how frequently the word `make` appears in each email. It is included here to check whether this word shows a similar pattern to the other predictors.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-7
+#| fig-cap: Distribution of the Word "Make" by Email Type.
+
+ggplot(
+  spam_clean,
+  aes(x = make, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    title = "Distribution of the Word 'Make' by Email Type",
+    x = "Frequency of 'Make'",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  theme_minimal()
+```
+
+Compared with the previous plots, @fig-7 does not show as clear a difference. There is still overlap between the two groups, and the separation here looks weaker overall.
+
+## Relationships Between Predictors
+
+The next step is to examine the relationships between the explanatory variables. This helps us check whether any predictors are strongly related to each other.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: fig-8
+#| fig-cap: Pairwise Relationships Between Explanatory Variables.
+
+GGally::ggpairs(
+  spam_clean[, c("crl.tot", "dollar", "bang", "money", "n000", "make")]
+)
+```
+
+As shown in @fig-8, most of the predictors look only weakly related. The clearest relationship seems to be between `dollar` and `n000`, but even that does not look especially strong. Based on this plot alone, there is no obvious sign of a serious multicollinearity problem, so these variables can still be taken forward into the formal model.
+
+## Exploratory Analysis Summary
+
+Overall, the exploratory analysis suggests that several text-based features differ between spam and non-spam emails, especially dollar signs, exclamation marks, financial terms, and the frequency of `000`. By contrast, `make` seems to show a weaker pattern. The relationships between predictors also look fairly modest. Taken together, these results support using these variables in the later logistic regression analysis.
+
+# Statistical Analysis: Generalized Linear Model (GLM)
+
+After exploring the data visually, we now employ a **Generalized Linear Model (GLM)** to quantify the relationship between email characteristics and the probability of an email being classified as spam. Since our response variable (`yesno`) is binary, we use **Logistic Regression** with a logit link function.
+
+## Model Fitting and Parameter Estimation
+
+First, we fit the global model including all potential predictors identified during the EDA phase. We examine the coefficients to determine which features significantly impact the log-odds of an email being spam.
+
+```{r}
+#| warning: false
+# Fit the Logistic Regression model
+# The 'family = binomial' argument specifies the logistic distribution
+spam_model <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make, 
+                  data = spam_clean, 
+                  family = binomial(link = "logit"))
+
+# Display detailed model coefficients and statistical significance
+summary(spam_model)
+```
+
+## Model Selection and Optimization
+
+To determine the most efficient set of predictors for our spam filter, we compared the **Full Model** (including all 6 variables) against a **Reduced Model** (excluding the non-significant variable `make`).
+
+-   **Full Model AIC:** 766.44
+
+-   **Reduced Model AIC:** 766.04
+
+The results indicate that the Reduced Model achieves a lower AIC score. This suggests that the inclusion of the word "make" adds complexity to the model without providing additional predictive value. Consequently, to ensure a parsimonious and robust classification system, we will proceed with the **Reduced Model** for our final analysis and business recommendations.
+
+```{r}
+#| warning: false
+# Full model (with 'make')
+model_full <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make, 
+                  data = spam_clean, family = binomial)
+
+# Reduced model (without 'make')
+model_reduced <- glm(yesno ~ crl.tot + dollar + bang + money + n000, 
+                     data = spam_clean, family = binomial)
+
+# Compare AIC
+cat("Full Model AIC:", AIC(model_full), "\n")
+cat("Reduced Model AIC:", AIC(model_reduced), "\n")
+```
+
+## Statistical Inference: Model Fitting on the Full Dataset
+
+In this initial phase, we utilize the entire dataset (*N=920*) to fit the Generalized Linear Model. The goal is to maximize statistical power and obtain the most precise estimates for our coefficients.
+
+### Quantifying Feature Influence (Odds Ratios)
+
+To provide actionable insights for the spam filter's configuration, we calculate the **Odds Ratios (OR)**. This tells us how many times more likely an email is to be spam for every unit increase in a specific text feature.
+
+```{r}
+#| warning: false
+# Use the reduced model for final interpretation
+model_final <- glm(yesno ~ crl.tot + dollar + bang + money + n000, 
+                   data = spam_clean, 
+                   family = binomial(link = "logit"))
+# Calculate Odds Ratios and 95% Confidence Intervals
+# exp() transforms the logit coefficients into a multiplier format
+final_interpretation <- exp(cbind(OR = coef(model_final), confint(model_final)))
+
+# Display the results
+round(as.data.frame(final_interpretation), 3)
+```
+
+## Evaluating Filter Performance (Confusion Matrix)
+
+A good model must not only be statistically significant but also accurate in practice. We evaluate our model by comparing its predictions against the actual labels in our dataset.
+
+```{r}
+#| warning: false
+# Generate predicted probabilities
+spam_clean <- spam_clean %>%
+  mutate(pred_prob = predict(model_final, type = "response"),
+         pred_y = ifelse(pred_prob > 0.5, "y", "n"))
+
+# Create the Confusion Matrix
+conf_matrix <- table(Predicted = spam_clean$pred_y, Actual = spam_clean$yesno)
+print(conf_matrix)
+
+# Calculate Accuracy and False Positive Rate
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+false_positives <- conf_matrix[2, 1] / sum(conf_matrix[, 1]) # 'y' predicted but actually 'n'
+
+cat("Overall Accuracy:", round(accuracy * 100, 2), "%\n")
+cat("False Positive Rate:", round(false_positives * 100, 2), "%\n")
+```
+
+## Predictive Validation: Performance Assessment via 80/20 Split
+
+To test the practical utility of our spam filter, we employ a validation strategy by partitioning the data into an 80% training set and a 20% test set. While the first model provided theoretical insights, this second training phase evaluates the model's generalizability. By assessing accuracy and error rates on unseen data, we can confirm whether the patterns identified in the full dataset are robust or merely a result of overfitting.
+
+### Data Partitioning
+
+We use a random sampling method to split the data. By setting a `seed`, we ensure the results are reproducible.
+
+```{r}
+#| warning: false
+# Set seed for reproducibility
+set.seed(2024)
+
+# Calculate the sample size for 80% of the data
+n <- nrow(spam_clean)
+train_size <- round(0.8 * n)
+
+# Randomly select indices for the training set
+train_indices <- sample(seq_len(n), size = train_size)
+
+# Split the data
+spam_train <- spam_clean[train_indices, ]
+spam_test  <- spam_clean[-train_indices, ]
+
+# Verify the dimensions
+cat("Training set rows:", nrow(spam_train), "\n")
+cat("Testing set rows:", nrow(spam_test), "\n")
+```
+
+### Training the Refined Model
+
+We fit the **Generalized Linear Model (GLM)** using only the training data. Based on our previous AIC analysis, we exclude the non-significant variable `make`.
+
+```{r}
+#| warning: false
+# Fit the final model on the training data only
+final_model_train <- glm(yesno ~ crl.tot + dollar + bang + money + n000, 
+                         data = spam_train, 
+                         family = binomial(link = "logit"))
+
+# Check summary to ensure consistency
+summary(final_model_train)
+```
+
+### Evaluating Performance on the Test Set
+
+Now, we apply the model to the **Test Set**. These are 184 emails (20% of 920) that the model has never seen before. We will use a probability threshold of **0.5** to classify emails as spam ('y') or not spam ('n').
+
+```{r}
+#| warning: false
+# Predict probabilities for the test set
+spam_test <- spam_test %>%
+  mutate(pred_prob = predict(final_model_train, newdata = spam_test, type = "response"),
+         prediction = ifelse(pred_prob > 0.5, "y", "n"))
+
+# Generate the Confusion Matrix for the Test Set
+test_conf_matrix <- table(Predicted = spam_test$prediction, Actual = spam_test$yesno)
+print(test_conf_matrix)
+
+# Calculate Performance Metrics
+test_accuracy <- sum(diag(test_conf_matrix)) / sum(test_conf_matrix)
+false_positives <- test_conf_matrix[2, 1] / sum(test_conf_matrix[, 1])
+
+cat("Final Test Accuracy:", round(test_accuracy * 100, 2), "%\n")
+cat("False Positive Rate (Unseen Data):", round(false_positives * 100, 2), "%\n")
+```
+
+# Conclusions {#sec-con}
