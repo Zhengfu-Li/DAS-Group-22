@@ -176,7 +176,7 @@ eda_group_summary %>%
   knitr::kable(digits = 3)
 ```
 
-Table @tbl-1 shows two clear features of the dataset. First, the punctuation- and word-based predictors contain many zeros, especially for non-spam emails, so simply whether a term appears or not already tells us something. Second, the predictors are strongly right-skewed, with some quite large maximum values, so medians and zero proportions are more useful here than means on their own.
+@tbl-1 shows two clear features of the dataset. First, the punctuation- and word-based predictors contain many zeros, especially for non-spam emails, so simply whether a term appears or not already tells us something. Second, the predictors are strongly right-skewed, with some quite large maximum values, so medians and zero proportions are more useful here than means on their own.
 
 ## Distribution of Capital Letter Sequences
 
@@ -214,7 +214,7 @@ ggplot(
   theme_minimal()
 ```
 
-In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam distribution is shifted to the right and has a heavier tail. This matches Table @tbl-1, where the median of `crl.tot` is 171 for spam emails compared with 55 for non-spam emails, and the mean is also much larger (415.4 versus 168.3). There is still overlap between the two classes, but higher values of `crl.tot` are associated with a higher probability of spam classification, making it one of the clearest separating variables in the EDA.
+In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam distribution is shifted to the right and has a heavier tail. This matches @tbl-1, where the median of `crl.tot` is 171 for spam emails compared with 55 for non-spam emails, and the mean is also much larger (415.4 versus 168.3). There is still overlap between the two classes, but higher values of `crl.tot` are associated with a higher probability of spam classification, making it one of the clearest separating variables in the EDA.
 
 Because `crl.tot` is strongly right-skewed, it is also helpful to look at the same variable on a log-transformed scale. This makes the separation in the main body of the distribution easier to see without being dominated by a small number of extreme values.
 
@@ -453,7 +453,7 @@ eda_correlations %>%
   knitr::kable(digits = 3)
 ```
 
-As shown in @fig-9 and summarised in Table @tbl-2, most of the predictors are only weakly to moderately related. Table @tbl-2 reports Spearman rank correlations, and the upper panels of @fig-9 use the same measure, which is more appropriate here because several variables are strongly right-skewed and contain many zeros. The strongest rank correlation is between `dollar` and `n000`, but the overall pattern still suggests that no pair of predictors is strongly tied together. The lower panels of the scatterplot matrix remain useful because they show the raw pairwise patterns on the original scale, making it easier to check for obvious clustering or nonlinearity that a single correlation coefficient would miss. No strong alternative pattern stands out.
+As shown in @fig-9 and summarised in @tbl-2, most of the predictors are only weakly to moderately related. @tbl-2 reports Spearman rank correlations, and the upper panels of @fig-9 use the same measure, which is more appropriate here because several variables are strongly right-skewed and contain many zeros. The strongest rank correlation is between `dollar` and `n000`, but the overall pattern still suggests that no pair of predictors is strongly tied together. The lower panels of the scatterplot matrix remain useful because they show the raw pairwise patterns on the original scale, making it easier to check for obvious clustering or nonlinearity that a single correlation coefficient would miss. No strong alternative pattern stands out.
 
 ## Sensitivity to Duplicate Rows
 
