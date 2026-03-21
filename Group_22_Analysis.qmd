@@ -176,7 +176,7 @@ eda_group_summary %>%
   knitr::kable(digits = 3)
 ```
 
-Table @tbl-1 shows two clear features of the dataset. First, the punctuation- and word-based predictors contain many zeros, especially for non-spam emails, so simply whether a term appears or not already tells us something. Second, the predictors are strongly right-skewed, with some quite large maximum values, so medians and zero proportions are more useful here than means on their own.
+@tbl-1 shows two clear features of the dataset. First, the punctuation- and word-based predictors contain many zeros, especially for non-spam emails, so simply whether a term appears or not already tells us something. Second, the predictors are strongly right-skewed, with some quite large maximum values, so medians and zero proportions are more useful here than means on their own.
 
 ## Distribution of Capital Letter Sequences
 
@@ -214,7 +214,7 @@ ggplot(
   theme_minimal()
 ```
 
-In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam distribution is shifted to the right and has a heavier tail. This matches Table @tbl-1, where the median of `crl.tot` is 171 for spam emails compared with 55 for non-spam emails, and the mean is also much larger (415.4 versus 168.3). There is still overlap between the two classes, but higher values of `crl.tot` are associated with a higher probability of spam classification, making it one of the clearest separating variables in the EDA.
+In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam distribution is shifted to the right and has a heavier tail. This matches @tbl-1, where the median of `crl.tot` is 171 for spam emails compared with 55 for non-spam emails, and the mean is also much larger (415.4 versus 168.3). There is still overlap between the two classes, but higher values of `crl.tot` are associated with a higher probability of spam classification, making it one of the clearest separating variables in the EDA.
 
 Because `crl.tot` is strongly right-skewed, it is also helpful to look at the same variable on a log-transformed scale. This makes the separation in the main body of the distribution easier to see without being dominated by a small number of extreme values.
 
@@ -502,6 +502,8 @@ First, we fit the global model including all potential predictors identified dur
 
 ```{r}
 #| warning: false
+library(broom)
+library(kableExtra)
 # Fit the Logistic Regression model
 # The 'family = binomial' argument specifies the logistic distribution
 spam_model <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make, 
@@ -509,8 +511,23 @@ spam_model <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make,
                   family = binomial(link = "logit"))
 
 # Display detailed model coefficients and statistical significance
-summary(spam_model)
+tidy(spam_model, conf.int = TRUE, exponentiate = TRUE) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3))) |>
+  kbl(col.names = c("Term", "OR", "SE", "z", "p", "CI low", "CI high"),
+      caption = "Logistic regression -- odds ratios with 95% CIs") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
+
+The logistic regression model can be written as:
+$$
+\ln\left(\frac{p}{1 - p}\right) = \beta_0 
++ \beta_1 (\text{crl.tot}) 
++ \beta_2 (\text{dollar}) 
++ \beta_3 (\text{bang}) 
++ \beta_4 (\text{money}) 
++ \beta_5 (\text{n000})
+$$
+where the left-hand side represents the log-odds of an email being classified as spam.
 
 ## Model Selection and Optimization
 
