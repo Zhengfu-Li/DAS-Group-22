@@ -453,7 +453,7 @@ eda_correlations %>%
   knitr::kable(digits = 3)
 ```
 
-As shown in @fig-9 and summarised in Table @tbl-2, most of the predictors are only weakly to moderately related. Table @tbl-2 reports Spearman rank correlations, and the upper panels of @fig-9 use the same measure, which is more appropriate here because several variables are strongly right-skewed and contain many zeros. The strongest rank correlation is between `dollar` and `n000`, but the overall pattern still suggests that no pair of predictors is strongly tied together. The lower panels of the scatterplot matrix remain useful because they show the raw pairwise patterns on the original scale, making it easier to check for obvious clustering or nonlinearity that a single correlation coefficient would miss. No strong alternative pattern stands out.
+As shown in @fig-9 and summarised in @tbl-2, most of the predictors are only weakly to moderately related. @tbl-2 reports Spearman rank correlations, and the upper panels of @fig-9 use the same measure, which is more appropriate here because several variables are strongly right-skewed and contain many zeros. The strongest rank correlation is between `dollar` and `n000`, but the overall pattern still suggests that no pair of predictors is strongly tied together. The lower panels of the scatterplot matrix remain useful because they show the raw pairwise patterns on the original scale, making it easier to check for obvious clustering or nonlinearity that a single correlation coefficient would miss. No strong alternative pattern stands out.
 
 ## Sensitivity to Duplicate Rows
 
