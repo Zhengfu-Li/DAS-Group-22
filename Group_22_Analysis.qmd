@@ -525,7 +525,8 @@ $$
 + \beta_2 (\text{dollar}) 
 + \beta_3 (\text{bang}) 
 + \beta_4 (\text{money}) 
-+ \beta_5 (\text{n000})
++ \beta_5 (\text{n000}) 
++ \beta_6 (\text{make})
 $$
 where the left-hand side represents the log-odds of an email being classified as spam.
 
