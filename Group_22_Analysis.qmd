@@ -103,6 +103,17 @@ The response variable is moderately imbalanced, with 557 non-spam emails (60.5\%
 
 We start with the response variable `yesno`, which tells us whether an email is spam (`y`) or not spam (`n`).
 
+Before moving to the plots, it is useful to clarify what the main variables represent:
+
+- `crl.tot`: total length of uninterrupted capital letter sequences
+- `dollar`: frequency of the dollar sign
+- `bang`: frequency of exclamation marks
+- `money`: frequency of the word `money`
+- `n000`: frequency of the string `000`
+- `make`: frequency of the word `make`
+
+The frequency-based variables are measured relative to the length of each email, so they can be compared across messages of different sizes.
+
 ```{r}
 #| echo: false
 #| warning: false
@@ -111,24 +122,65 @@ We start with the response variable `yesno`, which tells us whether an email is 
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-1
-#| fig-cap: Distribution of Spam and Non-Spam Emails.
+#| fig-cap: Spam and non-spam email counts.
 
 ggplot(spam_clean, aes(x = yesno, fill = yesno)) +
   geom_bar() +
   labs(
-    title = "Distribution of Spam and Non-Spam Emails",
     x = "Email Type",
     y = "Count"
   ) +
+  scale_x_discrete(labels = c("n" = "Non-spam", "y" = "Spam")) +
   theme_minimal() +
   theme(legend.position = "none")
 ```
 
-As shown in @fig-1, there are more non-spam emails than spam emails in the dataset. The difference is there, but it is not very large, so class imbalance does not seem to be a major issue here.
+As shown in @fig-1, there are 557 non-spam emails and 363 spam emails in the dataset. This corresponds to 60.5\% non-spam and 39.5\% spam, so there is some class imbalance, although it is not very large. The main aim of the EDA is therefore to identify which variables show the clearest separation between the two classes.
+
+## Grouped Summary of Predictors
+
+Before interpreting the individual figures, it is useful to summarise each predictor by email type. This gives a clearer baseline for identifying separation, sparsity, and unusually large values.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+predictor_vars <- c("crl.tot", "dollar", "bang", "money", "n000", "make")
+
+eda_group_summary <- spam_clean %>%
+  pivot_longer(
+    cols = all_of(predictor_vars),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  group_by(yesno, variable) %>%
+  summarise(
+    mean = mean(value),
+    median = median(value),
+    zero_pct = 100 * mean(value == 0),
+    max = max(value),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: tbl-1
+#| tbl-cap: Grouped summary of predictors by email type.
+
+eda_group_summary %>%
+  mutate(zero_pct = sprintf("%.1f%%", zero_pct)) %>%
+  knitr::kable(digits = 3)
+```
+
+Table @tbl-1 shows two clear features of the dataset. First, the punctuation- and word-based predictors contain many zeros, especially for non-spam emails, so simply whether a term appears or not already tells us something. Second, the predictors are strongly right-skewed, with some quite large maximum values, so medians and zero proportions are more useful here than means on their own.
 
 ## Distribution of Capital Letter Sequences
 
-We then look at `crl.tot`, which measures the total length of uninterrupted capital letter sequences in each email.
+With that overall summary in mind, it is helpful to start with `crl.tot`, which measures the total length of uninterrupted capital letter sequences in each email.
 
 ```{r}
 #| echo: false
@@ -138,7 +190,7 @@ We then look at `crl.tot`, which measures the total length of uninterrupted capi
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-2
-#| fig-cap: Distribution of Capital Letter Sequence Length by Email Type.
+#| fig-cap: Capital letter sequence length by email type.
 
 ggplot(
   spam_clean,
@@ -146,20 +198,25 @@ ggplot(
 ) +
   geom_density(alpha = 0.4) +
   labs(
-    title = "Distribution of Capital Letter Sequence Length by Email Type",
     x = "Capital Letter Sequence Length",
     y = "Density"
   ) +
-  scale_fill_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
-  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_fill_manual(
+    values = c("n" = "#1f77b4", "y" = "#d62728"),
+    name = "Email Type",
+    labels = c("n" = "Non-spam", "y" = "Spam")
+  ) +
+  scale_color_manual(
+    values = c("n" = "#1f77b4", "y" = "#d62728"),
+    name = "Email Type",
+    labels = c("n" = "Non-spam", "y" = "Spam")
+  ) +
   theme_minimal()
 ```
 
-In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam group looks more spread out and has a longer right tail. So larger values of `crl.tot` seem to appear more often in spam emails, even though the two groups still overlap.
+In @fig-2, both groups are concentrated at low values of `crl.tot`, but the spam distribution is shifted to the right and has a heavier tail. This matches Table @tbl-1, where the median of `crl.tot` is 171 for spam emails compared with 55 for non-spam emails, and the mean is also much larger (415.4 versus 168.3). There is still overlap between the two classes, but higher values of `crl.tot` are associated with a higher probability of spam classification, making it one of the clearest separating variables in the EDA.
 
-## Dollar Sign Frequency and Spam
-
-This plot compares the frequency of dollar signs in spam and non-spam emails. The variable `dollar` measures how often the dollar symbol appears as a percentage of the total number of characters in the email.
+Because `crl.tot` is strongly right-skewed, it is also helpful to look at the same variable on a log-transformed scale. This makes the separation in the main body of the distribution easier to see without being dominated by a small number of extreme values.
 
 ```{r}
 #| echo: false
@@ -169,28 +226,35 @@ This plot compares the frequency of dollar signs in spam and non-spam emails. Th
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-3
-#| fig-cap: Distribution of Dollar Sign Frequency by Email Type.
+#| fig-cap: Log-transformed capital letter sequence length by email type.
 
 ggplot(
   spam_clean,
-  aes(x = dollar, y = as.numeric(yesno == "y"), color = yesno)
+  aes(x = log1p(crl.tot), fill = yesno, color = yesno)
 ) +
-  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  geom_density(alpha = 0.4) +
   labs(
-    title = "Distribution of Dollar Sign Frequency by Email Type",
-    x = "Dollar Sign Frequency",
-    y = "Email Type"
+    x = "Log-transformed Capital Letter Sequence Length",
+    y = "Density"
   ) +
-  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
-  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
+  scale_fill_manual(
+    values = c("n" = "#1f77b4", "y" = "#d62728"),
+    name = "Email Type",
+    labels = c("n" = "Non-spam", "y" = "Spam")
+  ) +
+  scale_color_manual(
+    values = c("n" = "#1f77b4", "y" = "#d62728"),
+    name = "Email Type",
+    labels = c("n" = "Non-spam", "y" = "Spam")
+  ) +
   theme_minimal()
 ```
 
-Looking at @fig-3, most observations are close to zero in both groups. Even so, the spam emails include more of the larger `dollar` values, so there seems to be some separation.
+In @fig-3, the extreme right tail is compressed and the class difference in the centre of the distribution becomes easier to compare. The spam emails still tend to have larger transformed values, which supports the earlier conclusion that `crl.tot` has a positive association with spam classification.
 
-## Exclamation Mark Frequency and Spam
+## Dollar Sign Frequency
 
-We also compare the use of exclamation marks across the two email types. The variable `bang` gives the percentage of exclamation marks in each email.
+Another punctuation-based variable is `dollar`. It records how often the dollar symbol appears as a percentage of the total number of characters in the email.
 
 ```{r}
 #| echo: false
@@ -200,28 +264,28 @@ We also compare the use of exclamation marks across the two email types. The var
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-4
-#| fig-cap: Distribution of Exclamation Mark Frequency by Email Type.
+#| fig-cap: Dollar sign frequency by email type.
 
 ggplot(
   spam_clean,
-  aes(x = bang, y = as.numeric(yesno == "y"), color = yesno)
+  aes(x = dollar, y = as.numeric(yesno == "y"), color = yesno)
 ) +
   geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Distribution of Exclamation Mark Frequency by Email Type",
-    x = "Exclamation Mark Frequency",
+    x = "Dollar Sign Frequency",
     y = "Email Type"
   ) +
   scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
-  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
-  theme_minimal()
+  scale_y_continuous(breaks = c(0, 1), labels = c("Non-spam", "Spam")) +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
-The pattern in @fig-4 is similar, although the separation is still not very sharp. Many non-spam emails stay close to zero, while higher values of `bang` show up more often in spam emails.
+Looking at @fig-4, most observations are close to zero in both groups, but the difference between the classes is still clear. Dollar signs are absent in 89.6\% of non-spam emails but only 43.8\% of spam emails, and the spam median is 0.051 whereas the non-spam median is 0. This gap is large enough to make `dollar` one of the strongest single-variable signals in the EDA.
 
-## Keyword Frequency: "Money"
+## Exclamation Mark Frequency
 
-This figure looks at the use of the word `money` in spam and non-spam emails. The variable `money` measures how frequently the word appears relative to the total number of characters in an email.
+The next punctuation-based variable is `bang`, which records the percentage of exclamation marks in each email.
 
 ```{r}
 #| echo: false
@@ -231,28 +295,28 @@ This figure looks at the use of the word `money` in spam and non-spam emails. Th
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-5
-#| fig-cap: Distribution of the Word "Money" by Email Type.
+#| fig-cap: Exclamation mark frequency by email type.
 
 ggplot(
   spam_clean,
-  aes(x = money, y = as.numeric(yesno == "y"), color = yesno)
+  aes(x = bang, y = as.numeric(yesno == "y"), color = yesno)
 ) +
   geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Distribution of the Word 'Money' by Email Type",
-    x = "Frequency of 'Money'",
+    x = "Exclamation Mark Frequency",
     y = "Email Type"
   ) +
   scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
-  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
-  theme_minimal()
+  scale_y_continuous(breaks = c(0, 1), labels = c("Non-spam", "Spam")) +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
-For @fig-5, the same general pattern is visible. Most values are still close to zero, but the higher values of `money` appear more often in spam emails.
+The contrast in @fig-5 is stronger than for several of the other token-based variables. Exclamation marks are zero in 75.9\% of non-spam emails but only 20.1\% of spam emails, and the spam median (0.298) is clearly above the non-spam median of 0. Among the token-based predictors examined so far, `bang` shows one of the sharpest step changes between the two classes.
 
-## Frequency of "000" and Spam
+## Frequency of the Word "Money"
 
-This figure looks at the variable `n000`, which measures the frequency of the string `000` in each email. This may be relevant because spam messages often contain number-based promotions or pricing-related content.
+The word-level indicators are much sparser. The variable `money` measures how frequently the word appears relative to the total number of characters in an email.
 
 ```{r}
 #| echo: false
@@ -262,28 +326,28 @@ This figure looks at the variable `n000`, which measures the frequency of the st
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-6
-#| fig-cap: Distribution of "000" by Email Type.
+#| fig-cap: Frequency of the word "money" by email type.
 
 ggplot(
   spam_clean,
-  aes(x = n000, y = as.numeric(yesno == "y"), color = yesno)
+  aes(x = money, y = as.numeric(yesno == "y"), color = yesno)
 ) +
   geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Distribution of '000' by Email Type",
-    x = "Frequency of '000'",
+    x = "Frequency of 'Money'",
     y = "Email Type"
   ) +
   scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
-  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
-  theme_minimal()
+  scale_y_continuous(breaks = c(0, 1), labels = c("Non-spam", "Spam")) +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
-In @fig-6, most observations are again concentrated close to zero. However, the larger values of `n000` are seen more often in the spam group, which suggests that this variable may also help distinguish the two classes.
+The main feature in @fig-6 is that most values are zero: the median is 0 in both groups, and `money` is absent from 98.7\% of non-spam emails and 66.4\% of spam emails. Even so, the larger positive values occur much more often in spam emails. That makes `money` informative mainly when it is present, but clearly less separating than `dollar` or `bang`.
 
-## Frequency of "Make" and Spam
+## Frequency of "000"
 
-This figure looks at the variable `make`, which measures how frequently the word `make` appears in each email. It is included here to check whether this word shows a similar pattern to the other predictors.
+Another sparse variable is `n000`, which measures how often the string `000` appears in each email.
 
 ```{r}
 #| echo: false
@@ -293,7 +357,38 @@ This figure looks at the variable `make`, which measures how frequently the word
 #| fig-width: 4.5
 #| fig-height: 3.5
 #| label: fig-7
-#| fig-cap: Distribution of the Word "Make" by Email Type.
+#| fig-cap: Frequency of "000" by email type.
+
+ggplot(
+  spam_clean,
+  aes(x = n000, y = as.numeric(yesno == "y"), color = yesno)
+) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
+  labs(
+    x = "Frequency of '000'",
+    y = "Email Type"
+  ) +
+  scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("Non-spam", "Spam")) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+In @fig-7, most observations are again close to zero, but the pattern is still useful. The string `000` is absent in 97.1\% of non-spam emails and 71.1\% of spam emails, so when it appears it is more common in spam. This puts `n000` in the same secondary group as `money` rather than the leading group formed by `dollar` and `bang`: the direction is informative, but the separation is limited by strong sparsity.
+
+## Frequency of the Word "Make"
+
+The last variable we look at is `make`, which measures another word-based feature but appears to separate the two classes less clearly than the previous predictors.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-align: center
+#| fig-width: 4.5
+#| fig-height: 3.5
+#| label: fig-8
+#| fig-cap: Frequency of the word "make" by email type.
 
 ggplot(
   spam_clean,
@@ -301,38 +396,101 @@ ggplot(
 ) +
   geom_jitter(height = 0.05, width = 0, alpha = 0.5, size = 1.4) +
   labs(
-    title = "Distribution of the Word 'Make' by Email Type",
     x = "Frequency of 'Make'",
     y = "Email Type"
   ) +
   scale_color_manual(values = c("n" = "#1f77b4", "y" = "#d62728")) +
-  scale_y_continuous(breaks = c(0, 1), labels = c("n", "y")) +
-  theme_minimal()
+  scale_y_continuous(breaks = c(0, 1), labels = c("Non-spam", "Spam")) +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
-Compared with the previous plots, @fig-7 does not show as clear a difference. There is still overlap between the two groups, and the separation here looks weaker overall.
+Compared with the previous plots, @fig-8 shows weaker separation. The word `make` is still more common in spam emails, but the difference is smaller: it is absent in 84.2\% of non-spam emails and 67.8\% of spam emails, and the distributions overlap a lot. Against the clearer gaps for `bang` and `dollar`, the contrast here is modest, so `make` looks like the weakest predictor in this set.
 
 ## Relationships Between Predictors
 
-The next step is to examine the relationships between the explanatory variables. This helps us check whether any predictors are strongly related to each other.
+After looking at the predictors one by one, it is also useful to see whether some of them are telling us very similar things.
 
 ```{r}
 #| echo: false
 #| warning: false
 #| message: false
-#| label: fig-8
-#| fig-cap: Pairwise Relationships Between Explanatory Variables.
+
+eda_correlations <- spam_clean %>%
+  select(all_of(predictor_vars)) %>%
+  cor(method = "spearman") %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("var1") %>%
+  pivot_longer(-var1, names_to = "var2", values_to = "correlation") %>%
+  filter(var1 < var2) %>%
+  arrange(desc(abs(correlation)))
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: fig-9
+#| fig-cap: Pairwise relationships among the explanatory variables.
 
 GGally::ggpairs(
-  spam_clean[, c("crl.tot", "dollar", "bang", "money", "n000", "make")]
+  spam_clean[, c("crl.tot", "dollar", "bang", "money", "n000", "make")],
+  upper = list(
+    continuous = GGally::wrap("cor", method = "spearman", size = 3)
+  )
 )
 ```
 
-As shown in @fig-8, most of the predictors look only weakly related. The clearest relationship seems to be between `dollar` and `n000`, but even that does not look especially strong. Based on this plot alone, there is no obvious sign of a serious multicollinearity problem, so these variables can still be taken forward into the formal model.
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: tbl-2
+#| tbl-cap: Largest pairwise Spearman correlations among the predictors.
+
+eda_correlations %>%
+  slice_head(n = 5) %>%
+  knitr::kable(digits = 3)
+```
+
+As shown in @fig-9 and summarised in Table @tbl-2, most of the predictors are only weakly to moderately related. Table @tbl-2 reports Spearman rank correlations, and the upper panels of @fig-9 use the same measure, which is more appropriate here because several variables are strongly right-skewed and contain many zeros. The strongest rank correlation is between `dollar` and `n000`, but the overall pattern still suggests that no pair of predictors is strongly tied together. The lower panels of the scatterplot matrix remain useful because they show the raw pairwise patterns on the original scale, making it easier to check for obvious clustering or nonlinearity that a single correlation coefficient would miss. No strong alternative pattern stands out.
+
+## Sensitivity to Duplicate Rows
+
+Because duplicated rows are fairly common in this dataset, it is also useful to check whether removing them changes the main EDA conclusions.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+spam_unique <- unique(spam_clean)
+
+dup_class_summary <- spam_clean %>%
+  count(yesno, name = "n_with_dups") %>%
+  left_join(
+    spam_unique %>% count(yesno, name = "n_unique"),
+    by = "yesno"
+  ) %>%
+  mutate(duplicate_rows = n_with_dups - n_unique)
+
+dup_nonspam <- dup_class_summary$duplicate_rows[dup_class_summary$yesno == "n"]
+dup_spam <- dup_class_summary$duplicate_rows[dup_class_summary$yesno == "y"]
+unique_spam_pct <- 100 * mean(spam_unique$yesno == "y")
+
+crl_n <- median(spam_unique$crl.tot[spam_unique$yesno == "n"])
+crl_y <- median(spam_unique$crl.tot[spam_unique$yesno == "y"])
+dollar_n <- median(spam_unique$dollar[spam_unique$yesno == "n"])
+dollar_y <- median(spam_unique$dollar[spam_unique$yesno == "y"])
+bang_n <- median(spam_unique$bang[spam_unique$yesno == "n"])
+bang_y <- median(spam_unique$bang[spam_unique$yesno == "y"])
+```
+
+Of the 210 duplicated rows, `r dup_nonspam` belong to non-spam emails and `r dup_spam` belong to spam emails, so most of the duplication is in the non-spam class. After deduplication, the dataset contains `r nrow(spam_unique)` unique observations and the spam proportion rises to `r sprintf("%.1f", unique_spam_pct)`\%, so the duplicates materially affect class balance. Even so, the strongest variables still tell a similar story: in the deduplicated data, the spam class still has a much larger median `crl.tot` (`r crl_y` versus `r crl_n`), a positive median `dollar` frequency (`r sprintf("%.3f", dollar_y)` versus `r dollar_n`), and a positive median `bang` frequency (`r sprintf("%.3f", bang_y)` versus `r bang_n`). This suggests that duplication changes the class balance more than it changes the leading signals in the EDA, although it should still be handled carefully in the later modelling stage.
 
 ## Exploratory Analysis Summary
 
-Overall, the exploratory analysis suggests that several text-based features differ between spam and non-spam emails, especially dollar signs, exclamation marks, financial terms, and the frequency of `000`. By contrast, `make` seems to show a weaker pattern. The relationships between predictors also look fairly modest. Taken together, these results support using these variables in the later logistic regression analysis.
+From the tables and plots above, `crl.tot`, `dollar`, and `bang` show the clearest separation between spam and non-spam emails. The variables `money` and `n000` sit a level below them: they are sparse, but their non-zero values still point in the same direction, while `make` shows the weakest relationship overall. Taken together, the stronger signals come mainly from emphatic formatting, punctuation, and promotional or financial language, which fits the kind of content often seen in spam emails. The predictors are not very strongly correlated with each other, so they seem to contribute different pieces of information rather than repeating the same signal. The data also show clear right-skew, many zero values, and a fairly large number of duplicated rows, mostly in the non-spam class. The duplicate check suggests that these repeated rows affect the class balance more than they affect the main separation seen in the strongest predictors. Overall, the EDA supports taking these variables forward into a logistic regression model, where their effects on the probability of spam classification can be assessed more formally.
 
 # Formal Analysis {#sec-FA}
 
